@@ -1,0 +1,36 @@
+{
+  "generatedBy": "tools/build_assets.mjs",
+  "note": "Deterministic: authored from a seeded PRNG, byte-identical on every build.",
+  "vendor": {
+    "basis": "vendor/basis/",
+    "draco": "vendor/draco/"
+  },
+  "assets": [
+    {
+      "id": "prop_crate",
+      "path": "assets/prop_crate.glb",
+      "class": "static-prop",
+      "format": "glb (glTF 2.0 binary)",
+      "provenance": "procedural - authored by tools/build_assets.mjs",
+      "licence": "project-owned",
+      "bytes": 3996,
+      "triangles": 24,
+      "primitives": 2,
+      "extensionsRequired": [
+        "KHR_texture_basisu"
+      ]
+    },
+    {
+      "id": "hero_panel",
+      "path": "assets/hero_panel.ktx2",
+      "class": "hero-surface-texture",
+      "format": "ktx2 (VK_FORMAT_R8G8B8A8_SRGB, uncompressed, 1 level)",
+      "provenance": "procedural - authored by tools/build_assets.mjs",
+      "licence": "project-owned",
+      "bytes": 262372,
+      "width": 256,
+      "height": 256,
+      "colorSpace": "srgb"
+    }
+  ]
+}

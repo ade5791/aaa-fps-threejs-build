@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>AAA FPS Core</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23111'/%3E%3Ccircle cx='8' cy='8' r='3' fill='%237ad4ff'/%3E%3C/svg%3E" />
+<style>
+  :root { --sp: 5px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#0b0d10;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:#dfe6ee; }
+  #game { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+  body.locked #game { cursor:none; }
+
+  #stats { position:fixed; top:10px; left:10px; z-index:20;
+    background:rgba(8,11,15,0.74); border:1px solid rgba(122,212,255,0.22);
+    border-radius:6px; padding:9px 11px; font-size:11.5px; line-height:1.62;
+    min-width:246px; backdrop-filter:blur(6px); }
+  #stats h3 { font-size:10px; letter-spacing:1.3px; text-transform:uppercase;
+    color:#7ad4ff; margin-bottom:5px; font-weight:600; }
+  #stats .row { display:flex; justify-content:space-between; gap:12px; }
+  #stats .k { color:#8b98a6; }
+  #stats .v { color:#e8eef5; font-variant-numeric:tabular-nums; }
+  #stats .sep { height:1px; background:rgba(255,255,255,0.09); margin:6px 0; }
+  #stats .ok { color:#79e08a; } #stats .warn { color:#f0b45a; } #stats .bad { color:#f0685a; }
+  #s-graph { display:block; width:224px; height:46px; margin-top:6px;
+    border:1px solid rgba(255,255,255,0.10); border-radius:3px; }
+  #s-dist { font-size:10.5px; color:#9fb0c0; margin-top:5px; word-spacing:1px; }
+
+  #help { position:fixed; bottom:10px; left:10px; z-index:20; font-size:11px;
+    background:rgba(8,11,15,0.70); border:1px solid rgba(255,255,255,0.10);
+    border-radius:6px; padding:8px 11px; line-height:1.7; color:#9fb0c0; }
+  #help b { color:#e8eef5; font-weight:600; }
+
+  #crosshair { position:fixed; left:50%; top:50%; z-index:15;
+    width:22px; height:22px; transform:translate(-50%,-50%); pointer-events:none; }
+  #crosshair i { position:absolute; background:rgba(230,245,255,0.92); display:block;
+    box-shadow:0 0 2px rgba(0,0,0,0.9); }
+  #crosshair .h1 { width:6px; height:1.5px; left:calc(50% - var(--sp) - 6px); top:calc(50% - 0.75px); }
+  #crosshair .h2 { width:6px; height:1.5px; left:calc(50% + var(--sp)); top:calc(50% - 0.75px); }
+  #crosshair .v1 { width:1.5px; height:6px; top:calc(50% - var(--sp) - 6px); left:calc(50% - 0.75px); }
+  #crosshair .v2 { width:1.5px; height:6px; top:calc(50% + var(--sp)); left:calc(50% - 0.75px); }
+  #crosshair .dot { width:1.5px; height:1.5px; left:calc(50% - 0.75px); top:calc(50% - 0.75px);
+    background:rgba(230,245,255,0.65); }
+
+  #toast { position:fixed; left:50%; bottom:78px; transform:translateX(-50%); z-index:20;
+    font-size:12px; color:#cfe2f0; background:rgba(8,11,15,0.78); padding:5px 12px;
+    border-radius:20px; border:1px solid rgba(122,212,255,0.22);
+    opacity:0; transition:opacity 0.28s; pointer-events:none; }
+
+  #vignette { position:fixed; inset:0; z-index:12; pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(0,0,0,0.42) 100%); }
+
+  #boot { position:fixed; inset:0; z-index:60; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px;
+    background:linear-gradient(160deg,#0a0d11 0%,#12181f 60%,#0a0d11 100%); }
+  #boot h1 { font-size:26px; letter-spacing:5px; font-weight:600; color:#e8eef5; }
+  #boot .sub { font-size:11.5px; letter-spacing:2.4px; color:#7ad4ff; text-transform:uppercase; }
+  #bar { width:290px; height:3px; background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden; }
+  #bar > i { display:block; height:100%; width:0%; background:#7ad4ff; transition:width 0.2s; }
+  #bootmsg { font-size:11px; color:#8b98a6; height:16px; }
+  #startbtn { margin-top:6px; padding:11px 30px; font:inherit; font-size:12.5px; letter-spacing:2px;
+    text-transform:uppercase; background:#7ad4ff; color:#08121a; border:0; border-radius:4px;
+    cursor:pointer; font-weight:700; display:none; }
+  #startbtn:hover { background:#a3e2ff; }
+  #err { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:80;
+    display:none; max-width:640px; background:#1a0f10; border:1px solid #a33;
+    padding:18px; border-radius:6px; font-size:12px; color:#ffd9d9; white-space:pre-wrap; }
+
+  /* ---------------- combat HUD ---------------- */
+  #combat-hud { position:fixed; inset:0; z-index:16; pointer-events:none; }
+
+  #c-health { position:fixed; left:24px; bottom:96px; width:212px; }
+  #c-health .lbl { font-size:9.5px; letter-spacing:2px; color:#7f8c99; text-transform:uppercase; }
+  #c-health .val { font-size:34px; font-weight:700; line-height:1; color:#e8eef4;
+    text-shadow:0 2px 6px rgba(0,0,0,0.85); font-variant-numeric:tabular-nums; }
+  #c-hpwrap { height:5px; background:rgba(255,255,255,0.13); border-radius:3px;
+    overflow:hidden; margin-top:5px; }
+  #c-hpbar { height:100%; width:100%; background:#4ad07a; transition:width 0.14s linear; }
+
+  #c-weapon { position:fixed; right:24px; bottom:96px; text-align:right; }
+  #c-weapon .wn { font-size:12px; letter-spacing:2px; color:#9fb0c0; text-transform:uppercase; }
+  #c-weapon .wm { font-size:9.5px; letter-spacing:1.6px; color:#6f7c89; margin-bottom:3px; }
+  #c-weapon .am { font-size:38px; font-weight:700; line-height:1; color:#e8eef4;
+    text-shadow:0 2px 6px rgba(0,0,0,0.85); font-variant-numeric:tabular-nums; }
+  #c-weapon .am small { font-size:17px; color:#8b98a6; font-weight:500; }
+
+  #c-reload { position:fixed; left:50%; top:58%; transform:translateX(-50%);
+    display:none; width:150px; text-align:center; }
+  #c-reload .t { font-size:10px; letter-spacing:2.4px; color:#cfe2f0; margin-bottom:4px; }
+  #c-reload .w { height:3px; background:rgba(255,255,255,0.16); border-radius:2px; overflow:hidden; }
+  #c-reloadbar { height:100%; width:0%; background:#7ad4ff; }
+
+  /* S4: mechanic meter -- charge / spin-up / thermal load. A mechanic the
+     player cannot SEE is a mechanic they cannot play around, so every gated
+     weapon surfaces its state directly under the crosshair. */
+  #c-mech { position:fixed; left:50%; top:62.5%; transform:translateX(-50%);
+    display:none; width:190px; text-align:center; }
+  #c-mech .t { font-size:9.5px; letter-spacing:2.2px; color:#b9c8d6; margin-bottom:4px;
+    text-transform:uppercase; text-shadow:0 1px 4px rgba(0,0,0,0.9); }
+  #c-mech .w { height:5px; background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.10); border-radius:3px; overflow:hidden; }
+  #c-mechbar { height:100%; width:0%; background:#7ad4ff; transition:background .12s linear; }
+  #c-mech.warn #c-mechbar { background:#ffb43c; }
+  #c-mech.crit #c-mechbar { background:#ff4d4d; }
+  #c-mech.crit .t { color:#ff8a8a; }
+
+  /* Scope overlay for the bolt-action sniper. */
+  #c-scope { position:fixed; inset:0; display:none; pointer-events:none; z-index:6; }
+  #c-scope .v { position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 26%, rgba(0,0,0,0.97) 34%); }
+  #c-scope .h, #c-scope .vl { position:absolute; background:rgba(10,14,18,0.85); }
+  #c-scope .h { left:0; right:0; top:50%; height:1px; }
+  #c-scope .vl { top:0; bottom:0; left:50%; width:1px; }
+  #c-breath { position:fixed; left:50%; top:66%; transform:translateX(-50%);
+    display:none; width:120px; height:3px; background:rgba(255,255,255,0.14); border-radius:2px; overflow:hidden; }
+  #c-breathbar { height:100%; width:100%; background:#8fe6a0; }
+
+  #c-score { position:fixed; top:12px; right:16px; text-align:right; font-size:11.5px;
+    background:rgba(8,11,15,0.72); border:1px solid rgba(122,212,255,0.20);
+    border-radius:6px; padding:8px 12px; line-height:1.75; min-width:150px; }
+  #c-score .k { color:#8b98a6; } #c-score .v { color:#e8eef5; font-variant-numeric:tabular-nums; }
+  #c-score .row { display:flex; justify-content:space-between; gap:14px; }
+
+  #c-hitmark { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index:18; font-size:23px; font-weight:300; color:#fff; opacity:0;
+    text-shadow:0 0 4px rgba(0,0,0,0.95); pointer-events:none;
+    transition:opacity 0.06s linear; }
+
+  #c-killfeed { position:fixed; right:16px; top:112px; text-align:right;
+    font-size:12px; font-weight:600; letter-spacing:1.2px; line-height:1.85;
+    text-shadow:0 1px 4px rgba(0,0,0,0.9); }
+
+  #c-banner { position:fixed; left:50%; top:20%; transform:translateX(-50%);
+    display:none; text-align:center; }
+  #c-banner b { font-size:26px; letter-spacing:5px; color:#e8eef4;
+    text-shadow:0 2px 10px rgba(0,0,0,0.9); }
+  #c-banner span { font-size:11px; letter-spacing:2.6px; color:#7ad4ff; text-transform:uppercase; }
+
+  #c-dmg { position:fixed; inset:0; opacity:0; pointer-events:none; z-index:14;
+    background:radial-gradient(ellipse at center, rgba(180,20,10,0) 38%, rgba(180,20,10,0.85) 100%); }
+
+  #c-dmgdir { position:fixed; left:50%; top:50%; width:190px; height:190px;
+    transform:translate(-50%,-50%); opacity:0; pointer-events:none; z-index:17;
+    transition:opacity 0.12s; }
+  #c-dmgdir i { position:absolute; left:50%; top:6px; transform:translateX(-50%);
+    width:0; height:0; border-left:13px solid transparent; border-right:13px solid transparent;
+    border-bottom:17px solid rgba(255,74,58,0.92); }
+
+  #c-threat { position:fixed; left:50%; top:38%; transform:translateX(-50%);
+    font-size:12px; font-weight:700; letter-spacing:3.4px; color:#ff6a4a; opacity:0;
+    text-shadow:0 1px 6px rgba(0,0,0,0.9); transition:opacity 0.12s; }
+
+  #c-death { position:fixed; inset:0; display:none; align-items:center;
+    justify-content:center; z-index:19; background:rgba(20,4,2,0.55); text-align:center; }
+  #c-death b { font-size:34px; letter-spacing:7px; color:#ff5a3a; }
+  #c-death span { font-size:12px; letter-spacing:2.4px; color:#cfe2f0; }
+
+  /* ---- S7 MAP SELECTOR ------------------------------------------------
+     Sits above the boot screen and is REMOVED from the DOM once a map is
+     chosen, so it costs nothing at runtime. Reuses the existing boot/HUD
+     typographic language rather than introducing a second visual style. */
+  #mapsel {
+    position:fixed; inset:0; z-index:60; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:6px;
+    background:radial-gradient(ellipse at 50% 38%, #1b1d21 0%, #0b0c0e 72%);
+    font:400 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color:#cfd4da; letter-spacing:.5px; padding:24px; overflow:auto;
+  }
+  #mapsel h1 { margin:0; font-size:23px; letter-spacing:7px; font-weight:600; color:#eef2f6; }
+  #mapsel .sub { color:#7d858e; font-size:11.5px; letter-spacing:1.4px; margin-bottom:16px; }
+  #mapsel .maphint { color:#5d646c; font-size:10.5px; letter-spacing:.8px; margin-top:12px; }
+  .mapgrid { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:900px; }
+  .mapcard {
+    width:264px; padding:12px; text-align:left; cursor:pointer;
+    background:#141619; color:#cfd4da; font:inherit;
+    border:1px solid #262a30; border-radius:3px;
+    transition:border-color .13s, transform .13s, background .13s;
+  }
+  .mapcard.hov { transform:translateY(-2px); background:#171a1e; }
+  .mapcard.sel { border-color:var(--accent); background:#181b1f; }
+  .mapcard.sel .mapname { color:var(--accent); }
+  .mapthumb { width:100%; height:auto; display:block; border-radius:2px;
+              background:#101113; border:1px solid #22262b; }
+  .mapname { margin-top:9px; font-size:15px; letter-spacing:2.6px; color:#e8edf2; font-weight:600; }
+  .mapsub  { margin-top:3px; font-size:11px; color:#8b939c; letter-spacing:.4px; }
+  .mapmeta { margin-top:7px; font-size:10.5px; color:var(--accent); letter-spacing:1.3px; opacity:.85; }
+  .maporigin { margin-top:4px; font-size:9.5px; color:#5d646c; letter-spacing:.3px; }
+  #mapplay {
+    margin-top:18px; padding:11px 42px; font:inherit; font-size:12.5px; letter-spacing:3px;
+    background:#8fd8ff; color:#06212e; border:0; border-radius:2px; cursor:pointer; font-weight:600;
+  }
+  #mapplay:hover { background:#a3e2ff; }
+
+  /* ---- S8 GAME MODES: menu (G), match bar, scoreboard (Tab) ------------
+     The mode menu deliberately REUSES the .mmgrid/.mmcard classes from the
+     map menu below rather than defining a parallel set: two selectors that
+     look different would read as two different games. Only the container id
+     and the grid width differ. */
+  #modemenu {
+    position:fixed; inset:0; z-index:71; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px;
+    background:rgba(9,10,12,.92);
+    font:400 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color:#cfd4da; letter-spacing:.5px; padding:24px; overflow:auto;
+  }
+  #modemenu h2 { margin:0; font-size:20px; letter-spacing:6px; font-weight:600; color:#eef2f6; }
+  #modemenu .mmsub { color:#7d858e; font-size:11px; letter-spacing:1.3px; margin-bottom:16px; }
+  #modemenu .mmhint { color:#5d646c; font-size:10.5px; letter-spacing:.8px; margin-top:14px; }
+  .gmgrid { max-width:1000px; }
+
+  /* MATCH BAR. Top-centre, mirroring where every shooter puts the score, and
+     deliberately low-contrast so it never competes with the crosshair. */
+  #matchbar {
+    position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:40;
+    display:flex; align-items:center; gap:18px; pointer-events:none;
+    font:600 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background:rgba(10,11,13,.55); border:1px solid rgba(60,66,74,.5);
+    border-radius:3px; padding:7px 16px; letter-spacing:1.5px;
+    text-shadow:0 1px 3px rgba(0,0,0,.9);
+  }
+  #matchbar .mbteam { font-size:20px; min-width:34px; text-align:center; }
+  #matchbar .mbblue { color:#4aa8ff; }
+  #matchbar .mbred  { color:#ff6a4a; }
+  #matchbar .mbmid  { text-align:center; min-width:150px; }
+  #matchbar .mbclock { font-size:17px; color:#eef2f6; }
+  #matchbar .mbstate { font-size:9.5px; color:#8d959e; letter-spacing:1.6px; margin-top:3px; font-weight:400; }
+
+  #objbar {
+    position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:40;
+    pointer-events:none; font:400 10.5px/1 ui-monospace, Menlo, Consolas, monospace;
+    letter-spacing:1.6px; color:#aeb6bf; background:rgba(10,11,13,.5);
+    border:1px solid rgba(60,66,74,.45); border-radius:3px; padding:5px 12px;
+    text-shadow:0 1px 3px rgba(0,0,0,.9);
+  }
+  #objbar.blue { color:#4aa8ff; border-color:rgba(74,168,255,.45); }
+  #objbar.red { color:#ff6a4a; border-color:rgba(255,106,74,.45); }
+  #objbar.contested { color:#ffd24a; border-color:rgba(255,210,74,.5); }
+
+  /* SCOREBOARD. Held on Tab, so it is allowed to be large and opaque. */
+  #scoreboard {
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:65;
+    pointer-events:none; min-width:640px; max-width:90vw;
+    background:rgba(10,11,13,.93); border:1px solid #262a30; border-radius:4px;
+    padding:16px 20px; color:#cfd4da;
+    font:400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  #scoreboard .sbhead {
+    font-size:13px; letter-spacing:2.4px; color:#eef2f6; font-weight:600;
+    padding-bottom:10px; margin-bottom:8px; border-bottom:1px solid #262a30;
+  }
+  #scoreboard .sbtable { display:flex; flex-direction:column; gap:1px; }
+  #scoreboard .sbrow {
+    display:grid; grid-template-columns:2.4fr .8fr .8fr .5fr .5fr .7fr;
+    gap:8px; padding:4px 6px; border-radius:2px;
+  }
+  #scoreboard .sbhdr { color:#6d757e; font-size:9.5px; letter-spacing:1.6px; }
+  #scoreboard .sbrow.sblocal { background:rgba(74,168,255,.10); color:#eef2f6; }
+  #scoreboard .sbrow.sbdead { opacity:.45; }
+  #scoreboard .sbfoot {
+    margin-top:10px; padding-top:8px; border-top:1px solid #262a30;
+    color:#5d646c; font-size:10px; letter-spacing:1px;
+  }
+
+  /* ---- S8 MULTIPLAYER PANEL (N) ---------------------------------------
+     THE defect this step exists to fix. Previously the ONLY way to reach
+     multiplayer was hand-editing a ?host= query param into the URL: the
+     networking worked, but no player could ever reach it. This panel is that
+     missing route -- host address, room code, name, live connection state and
+     errors, all reachable in-game without touching the URL bar. */
+  #netpanel {
+    position:fixed; inset:0; z-index:72; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px;
+    background:rgba(9,10,12,.94);
+    font:400 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color:#cfd4da; letter-spacing:.5px; padding:24px; overflow:auto;
+  }
+  #netpanel h2 { margin:0; font-size:20px; letter-spacing:6px; font-weight:600; color:#eef2f6; }
+  #netpanel .mmsub { color:#7d858e; font-size:11px; letter-spacing:1.3px; margin-bottom:18px; }
+  #netpanel .mmhint { color:#5d646c; font-size:10.5px; letter-spacing:.8px; margin-top:16px; text-align:center; }
+  .npform { display:flex; flex-direction:column; gap:11px; width:400px; max-width:90vw; }
+  .nprow { display:flex; flex-direction:column; gap:4px; }
+  .nprow label { font-size:9.5px; letter-spacing:1.8px; color:#6d757e; }
+  .nprow input {
+    background:#131619; border:1px solid #2b3138; border-radius:2px; color:#eef2f6;
+    padding:9px 11px; font:inherit; font-size:13px; letter-spacing:1.2px; outline:none;
+  }
+  .nprow input:focus { border-color:#4aa8ff; }
+  .nprow input::placeholder { color:#4d545c; letter-spacing:1px; }
+  #netpanel .npcode input { letter-spacing:5px; text-transform:uppercase; font-size:16px; text-align:center; }
+  .npbtns { display:flex; gap:10px; margin-top:6px; }
+  .npbtn {
+    flex:1; padding:11px 0; font:inherit; font-size:12px; letter-spacing:2.6px;
+    border:1px solid #39404a; background:#171a1e; color:#cfd4da; border-radius:2px;
+    cursor:pointer; font-weight:600; transition:background .12s, border-color .12s;
+  }
+  .npbtn:hover { background:#1e2227; border-color:#4d545c; }
+  .npbtn.primary { background:#8fd8ff; color:#06212e; border-color:#8fd8ff; }
+  .npbtn.primary:hover { background:#a3e2ff; }
+  .npbtn.danger { border-color:#5a2a24; color:#ff8a6a; }
+  .npbtn.danger:hover { background:#231412; }
+  /* Live connection state. The player must be able to SEE whether they are
+     connected and why a connection failed -- previously invisible. */
+  .npstat {
+    margin-top:16px; width:400px; max-width:90vw; padding:10px 12px;
+    border:1px solid #262a30; border-radius:2px; background:rgba(20,22,26,.7);
+    font-size:11px; letter-spacing:1.1px; color:#8d959e;
+  }
+  .npstat .npdot {
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:#5d646c; margin-right:8px; vertical-align:middle;
+  }
+  .npstat.on .npdot { background:#5ce08a; }
+  .npstat.wait .npdot { background:#ffd24a; }
+  .npstat.err .npdot { background:#ff6a4a; }
+  .npstat.on { color:#cfd4da; border-color:#2a4436; }
+  .npstat.err { color:#ff9a80; border-color:#4a2620; }
+  .npstat .nprooms { color:#eef2f6; letter-spacing:4px; font-weight:600; font-size:14px; }
+  .npstat .npmeta { color:#6d757e; font-size:10px; letter-spacing:1px; margin-top:5px; }
+
+  /* Connection toast -- transient NET_CONNECTED / NET_DISCONNECTED feedback,
+     visible during gameplay without opening the panel. */
+  #nettoast {
+    position:fixed; top:96px; left:50%; transform:translateX(-50%); z-index:41;
+    pointer-events:none; font:600 11px/1 ui-monospace, Menlo, Consolas, monospace;
+    letter-spacing:2px; padding:7px 15px; border-radius:3px;
+    background:rgba(10,11,13,.72); border:1px solid rgba(60,66,74,.5); color:#aeb6bf;
+    text-shadow:0 1px 3px rgba(0,0,0,.9);
+  }
+  #nettoast.on { color:#5ce08a; border-color:rgba(92,224,138,.45); }
+  #nettoast.err { color:#ff6a4a; border-color:rgba(255,106,74,.45); }
+
+  /* Round/match result banner -- timed, never permanent. */
+  #modebanner {
+    position:fixed; top:22%; left:50%; transform:translateX(-50%); z-index:60;
+    pointer-events:none; font:600 26px/1 ui-monospace, Menlo, Consolas, monospace;
+    letter-spacing:5px; color:#eef2f6; text-shadow:0 2px 14px rgba(0,0,0,.95);
+    text-align:center; white-space:nowrap;
+  }
+
+  /* ---- S7 IN-GAME MAP MENU (M) ----------------------------------------
+     MapMenuSystem (src/ui/mapmenu.js) creates #mapmenu but no rule for it
+     existed anywhere -- it rendered as unstyled default-white buttons on top
+     of the game. Translucent rather than opaque so the frozen frame stays
+     readable behind it, which is what makes the timescale=0 freeze legible. */
+  #mapmenu {
+    position:fixed; inset:0; z-index:70; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px;
+    background:rgba(9,10,12,.92);
+    font:400 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color:#cfd4da; letter-spacing:.5px; padding:24px; overflow:auto;
+  }
+  #mapmenu h2 { margin:0; font-size:20px; letter-spacing:6px; font-weight:600; color:#eef2f6; }
+  #mapmenu .mmsub { color:#7d858e; font-size:11px; letter-spacing:1.3px; margin-bottom:16px; }
+  #mapmenu .mmhint { color:#5d646c; font-size:10.5px; letter-spacing:.8px; margin-top:14px; }
+  .mmgrid { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:860px; }
+  .mmcard {
+    width:212px; padding:13px 14px; text-align:left; cursor:pointer;
+    background:#141619; color:#cfd4da; font:inherit;
+    border:1px solid #262a30; border-radius:3px;
+    transition:border-color .13s, transform .13s, background .13s;
+  }
+  .mmcard:hover { transform:translateY(-2px); background:#171a1e; border-color:#39404a; }
+  /* The map you are standing in right now. */
+  .mmcard.cur { border-color:var(--accent); background:#181b1f; }
+  .mmcard.cur .mmname { color:var(--accent); }
+  .mmcard.cur::after {
+    content:'CURRENT'; display:inline-block; margin-top:8px;
+    font-size:9px; letter-spacing:1.4px; color:#0b0c0e;
+    background:var(--accent); padding:1px 6px; border-radius:2px;
+  }
+  .mmname { font-size:14px; letter-spacing:2.2px; color:#e8edf2; font-weight:600; }
+  .mmdesc { margin-top:5px; font-size:10.5px; color:#8b939c; letter-spacing:.3px; }
+  .mmmeta { margin-top:6px; font-size:10px; color:var(--accent); letter-spacing:1.2px; opacity:.85; }
+</style>
+  <script type="module" crossorigin src="./assets/index-Br0Q7TVs.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/three-BE_1yw3D.js">
+  <link rel="modulepreload" crossorigin href="./assets/rapier-CKC5f6tm.js">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="vignette"></div>
+
+<div id="crosshair">
+  <i class="h1"></i><i class="h2"></i><i class="v1"></i><i class="v2"></i><i class="dot"></i>
+</div>
+
+<div id="stats">
+  <h3>Frame Stats</h3>
+  <div class="row"><span class="k">FPS</span><span class="v" id="s-fps">-</span></div>
+  <div class="row"><span class="k">Frame time</span><span class="v"><span id="s-ms">-</span> ms</span></div>
+  <div class="row"><span class="k">CPU time</span><span class="v"><span id="s-cpu">-</span> ms</span></div>
+  <div class="row"><span class="k">Draw calls</span><span class="v" id="s-calls">-</span></div>
+  <div class="row"><span class="k">Triangles</span><span class="v" id="s-tris">-</span></div>
+  <div class="row"><span class="k">Programs</span><span class="v" id="s-progs">-</span></div>
+  <div class="row"><span class="k">Geometries</span><span class="v" id="s-geos">-</span></div>
+  <div class="row"><span class="k">Textures</span><span class="v" id="s-texs">-</span></div>
+  <div class="row"><span class="k">Substeps</span><span class="v" id="s-steps">-</span></div>
+  <canvas id="s-graph" width="224" height="46"></canvas>
+  <div id="s-dist">collecting...</div>
+  <div class="sep"></div>
+  <div class="row"><span class="k">Position</span><span class="v" id="s-pos">-</span></div>
+  <div class="row"><span class="k">Speed</span><span class="v"><span id="s-spd">-</span> m/s</span></div>
+  <div class="row"><span class="k">Stance</span><span class="v" id="s-stance">-</span></div>
+  <div class="row"><span class="k">Zone</span><span class="v" id="s-zone">-</span></div>
+  <div class="row"><span class="k">Quality</span><span class="v" id="s-q">-</span></div>
+</div>
+
+<div id="help">
+  <b>WASD</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>Ctrl/C</b> crouch &nbsp; <b>Sprint+Ctrl</b> slide<br />
+  <b>Space</b> jump &nbsp; <b>Mouse</b> look &nbsp; <b>LMB</b> fire &nbsp; <b>RMB</b> ADS &nbsp; <b>R</b> reload<br />
+  <b>1-9</b> weapons &nbsp; <b>Q</b> quick-swap &nbsp; <b>Shift</b> (scoped) hold breath &nbsp; <b>Hold LMB</b> charge railgun / spin minigun<br />
+  <b>1</b> carbine &nbsp; <b>2</b> SMG &nbsp; <b>3</b> shotgun &nbsp; <b>F</b> push props &nbsp; <b>Backspace</b> respawn<br />
+  <b>Alt+1-8</b> teleport to spawn point &nbsp; <b>Esc</b> release cursor<br />
+  <b>G</b> game mode &nbsp; <b>N</b> multiplayer &nbsp; <b>M</b> map &nbsp; <b>Tab</b> scoreboard
+</div>
+
+<div id="combat-hud">
+  <div id="c-health">
+    <div class="lbl">Health</div>
+    <div class="val"><span id="c-hp">100</span></div>
+    <div id="c-hpwrap"><div id="c-hpbar"></div></div>
+  </div>
+
+  <div id="c-weapon">
+    <div class="wn" id="c-wname">MK-4 Carbine</div>
+    <div class="wm" id="c-wmode">AUTO 720rpm</div>
+    <div class="am"><span id="c-ammo">30</span> <small>/ <span id="c-reserve">105</span></small></div>
+  </div>
+
+  <div id="c-reload">
+    <div class="t">RELOADING</div>
+    <div class="w"><div id="c-reloadbar"></div></div>
+  </div>
+
+  <div id="c-mech">
+    <div class="t" id="c-mechlbl">CHARGE</div>
+    <div class="w"><div id="c-mechbar"></div></div>
+  </div>
+
+  <div id="c-scope"><div class="v"></div><div class="h"></div><div class="vl"></div></div>
+  <div id="c-breath"><div id="c-breathbar"></div></div>
+
+  <div id="c-score">
+    <div class="row"><span class="k">Score</span><span class="v" id="c-score-v">0</span></div>
+    <div class="row"><span class="k">Kills</span><span class="v" id="c-kills">0</span></div>
+    <div class="row"><span class="k">Wave</span><span class="v" id="c-wave">0</span></div>
+    <div class="row"><span class="k">Hostiles</span><span class="v" id="c-enemies">0</span></div>
+  </div>
+
+  <div id="c-killfeed"></div>
+  <div id="c-threat"></div>
+  <div id="c-banner"></div>
+  <div id="c-dmgdir"><i></i></div>
+  <div id="c-death"></div>
+</div>
+
+<div id="c-hitmark">&#10005;</div>
+<div id="c-dmg"></div>
+
+<div id="toast"></div>
+
+<div id="boot">
+  <div class="sub">Three.js FPS Core</div>
+  <!-- S7: filled in from the selected map at boot (main.js). The static text
+       is only a pre-JS placeholder; it must not claim a specific map. -->
+  <h1 id="boottitle">LOADING</h1>
+  <div id="bar"><i></i></div>
+  <div id="bootmsg">initialising</div>
+  <button id="startbtn">Click to Play</button>
+</div>
+
+<div id="err"></div>
+
+</body>
+</html>
