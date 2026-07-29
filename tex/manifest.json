@@ -1,0 +1,58 @@
+{
+ "concrete": {
+  "albedo": "tex/concrete_alb.jpg",
+  "roughness": "tex/concrete_rgh.jpg",
+  "ao": "tex/concrete_ao.jpg",
+  "size": 1024,
+  "bytes": 459015
+ },
+ "asphalt": {
+  "albedo": "tex/asphalt_alb.jpg",
+  "roughness": "tex/asphalt_rgh.jpg",
+  "ao": "tex/asphalt_ao.jpg",
+  "size": 1024,
+  "bytes": 703412
+ },
+ "plaster": {
+  "albedo": "tex/plaster_alb.jpg",
+  "roughness": "tex/plaster_rgh.jpg",
+  "ao": "tex/plaster_ao.jpg",
+  "size": 1024,
+  "bytes": 697174
+ },
+ "metal": {
+  "albedo": "tex/metal_alb.jpg",
+  "roughness": "tex/metal_rgh.jpg",
+  "ao": "tex/metal_ao.jpg",
+  "size": 1024,
+  "bytes": 331323
+ },
+ "wood": {
+  "albedo": "tex/wood_alb.jpg",
+  "roughness": "tex/wood_rgh.jpg",
+  "ao": "tex/wood_ao.jpg",
+  "size": 1024,
+  "bytes": 598758
+ },
+ "dirt": {
+  "albedo": "tex/dirt_alb.jpg",
+  "roughness": "tex/dirt_rgh.jpg",
+  "ao": "tex/dirt_ao.jpg",
+  "size": 1024,
+  "bytes": 636049
+ },
+ "gravel": {
+  "albedo": "tex/gravel_alb.jpg",
+  "roughness": "tex/gravel_rgh.jpg",
+  "ao": "tex/gravel_ao.jpg",
+  "size": 1024,
+  "bytes": 741634
+ },
+ "brick": {
+  "albedo": "tex/brick_alb.jpg",
+  "roughness": "tex/brick_rgh.jpg",
+  "ao": "tex/brick_ao.jpg",
+  "size": 1024,
+  "bytes": 736757
+ }
+}
