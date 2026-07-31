@@ -5,7 +5,7 @@ No install. Runs on desktop and mobile.
 
 ## Play now
 
-Primary (Cloudflare): https://aaa-fps-threejs.sponge-widget.workers.dev
+Primary (Cloudflare): https://aaa-fps-threejs.rose-spy.workers.dev
 
 Mirror (GitHub Pages): https://ade5791.github.io/aaa-fps-threejs-build/
 
